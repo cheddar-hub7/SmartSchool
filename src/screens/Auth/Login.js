@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { Text, TextField } from 'react-native-ui-lib';
 import { useNavigation } from '@react-navigation/native';
+import { auth, firestore } from '../../../firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const Login = ({ route }) => {
   const navigation = useNavigation();
@@ -22,9 +23,11 @@ const Login = ({ route }) => {
     setLoading(true);
 
     try {
-      const userCredential = await auth().signInWithEmailAndPassword(username, password);
+      const userCredential = await signInWithEmailAndPassword(auth, username, password);
       const user = userCredential.user;
-      const querySnapshot = await firestore().collection('Users').where('email', '==', user.email).get();
+      
+      const q = query(collection(firestore, 'Users'), where('email', '==', user.email));
+      const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
@@ -38,14 +41,14 @@ const Login = ({ route }) => {
           });
         } else {
           Alert.alert('Error', `User role mismatch: expected ${role}, but found ${userData.role}`);
-          await auth().signOut();
+          await auth.signOut();
         }
       } else {
         Alert.alert('Error', 'User data not found');
       }
     } catch (error) {
       console.error('Error during sign in:', error);
-      Alert.alert('Error', 'Something went wrong');
+      Alert.alert('Error', 'Invalid email or password');
     } finally {
       setLoading(false);
       setUsername('');
@@ -63,6 +66,85 @@ const Login = ({ route }) => {
           value={username}
           onChangeText={setUsername}
           placeholder="Enter your email"
+          autoCapitalize="none"
+          validate={'email'}
+          validationMessage={['Email is invalid']}
+          floatingPlaceholder
+          enableErrors
+          showCharCounter
+          floatOnFocus
+          floatingPlaceholderColor={{ focus: '#3cb371', error: '#E63B2E' }}
+          validateOnChange
+          validationMessagePosition={'bottom'}
+          style={{ borderBottomWidth: 1, borderBottomColor: '#3cb371', }}
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <TextField
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Enter your password"
+          secureTextEntry
+          validate={[(value) => value.length > 6]}
+          validationMessage={['Password length should be greater than 6 characters']}
+          floatingPlaceholder
+          enableErrors
+          showCharCounter
+          maxLength={30}
+          floatOnFocus
+          floatingPlaceholderColor={{ focus: '#3cb371', error: '#E63B2E' }}
+          validateOnChange
+          validationMessagePosition={'bottom'}
+          style={{ borderBottomWidth: 1, borderBottomColor: '#3cb371', }}
+        />
+      </View>
+      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Text style={styles.buttonText}>Login</Text>
+        )}
+      </TouchableOpacity>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  subText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  button: {
+    backgroundColor: '#3cb371',
+    paddingVertical: 12,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
+
+export default Login;          placeholder="Enter your email"
           autoCapitalize="none"
           validate={'email'}
           validationMessage={['Email is invalid']}
