@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import { useNavigation } from '@react-navigation/native';
+import { auth, firestore } from '../../../firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 const Register = () => {
+  const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,19 +21,22 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const userCredential = await auth().createUserWithEmailAndPassword(email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Store user role in Firestore
-      await firestore().collection('users').doc(user.uid).set({
+      // Store user in Firestore with role
+      await setDoc(doc(firestore, 'Users', user.uid), {
         email: user.email,
-        role: 'user' // default role, can be changed based on your role logic
+        role: 'student',
+        name: '',
+        createdAt: new Date()
       });
 
-      Alert.alert('Success', 'User registered!');
+      Alert.alert('Success', 'User registered! Please login.');
+      navigation.navigate('Login', { role: 'student' });
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Something went wrong');
+      Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
       setEmail('');
@@ -63,6 +69,66 @@ const Register = () => {
           placeholder="Enter your password"
           placeholderTextColor='#999'
           secureTextEntry
+        />
+      </View>
+      <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Text style={styles.buttonText}>Register</Text>
+        )}
+      </TouchableOpacity>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#f0ffff',
+  },
+  logo: {
+    textAlign: 'center',
+    marginBottom: 70,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    marginLeft: 10,
+    color: '#000000',
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    color: '#000',
+  },
+  button: {
+    backgroundColor: '#3cb371',
+    paddingVertical: 12,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
+
+export default Register;          secureTextEntry
         />
       </View>
       <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
